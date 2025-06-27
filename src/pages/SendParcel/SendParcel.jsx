@@ -1,15 +1,17 @@
 import { useForm } from "react-hook-form";
 import { useLoaderData } from "react-router";
 import Swal from "sweetalert2";
+import useAuth from "../../hooks/useAuth";
+import useAxiosSecure from "../../hooks/useAxiosSecure";
 
 function SendParcel() {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm();
+  const form = useForm();
+  const { register, handleSubmit, watch, reset, formState } = form;
+  const { errors } = formState;
+  console.log(errors);
+  const axiosSecure = useAxiosSecure();
+
+  const { user } = useAuth();  // Make sure useAuth() is invoked correctly
 
   const warehousesData = useLoaderData();
   const uniqueRegions = [...new Set(warehousesData.map((w) => w.region))];
@@ -67,25 +69,49 @@ function SendParcel() {
       width: 500,
     }).then((result) => {
       if (result.isConfirmed) {
-        confirmParcel(data);
+        confirmParcel(data, totalCost);
       }
     });
   };
 
-  const confirmParcel = (parcelData) => {
-    const finalData = { ...parcelData, creation_date: new Date().toISOString() };
-    console.log("Saving Data:", finalData);
-    Swal.fire({
-      icon: "success",
-      title: "Parcel Confirmed",
-      text: "Your parcel information has been saved.",
-      timer: 2000,
-      showConfirmButton: false,
-    });
+  const confirmParcel = (data, totalCost) => {
+    const parcelData = {
+      ...data,
+      total_cost: totalCost,
+      creator_email: user?.email || "unknown",
+      creation_time: new Date().toISOString(),
+      tracking_id: "TRK-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      status: "Pending",
+    };
+
+    console.log("Saving to Database:", parcelData);
+
+    //Save data to the server
+
+    axiosSecure.post('/parcels', parcelData)
+      .then(res => {
+        console.log(res.data)
+        if (res.data.tracking_id) {
+          //TODO : Redirect to payment page
+          Swal.fire({
+            icon: "success",
+            title: "Parcel Confirmed",
+            text: "Your parcel has been saved successfully.",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        }
+      })
+
+
     reset();
   };
 
   const onSubmit = (data) => {
+    if (data.type === "non-document" && (!data.weight || parseFloat(data.weight) <= 0)) {
+      Swal.fire("Error", "Please enter valid weight for non-document parcel.", "error");
+      return;
+    }
     showCostBreakdown(data);
   };
 
@@ -96,36 +122,29 @@ function SendParcel() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
+        {/* Parcel Info */}
         <div className="p-4 border rounded-lg">
           <h2 className="text-lg font-semibold mb-4">Parcel Info</h2>
           <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="label">Parcel Name</label>
-              <input {...register("title", { required: true })} className="input input-bordered w-full" placeholder="Describe your parcel" />
-              {errors.title && <span className="text-error text-sm">Parcel Name is required</span>}
-            </div>
-            <div>
-              <label className="label">Type</label>
-              <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-2">
-                  <input type="radio" value="document" {...register("type", { required: true })} className="radio" /> Document
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" value="non-document" {...register("type", { required: true })} className="radio" /> Non-Document
-                </label>
-              </div>
-              {errors.type && <span className="text-error text-sm">Type is required</span>}
+            <input {...register("title", { required: true })} className="input input-bordered w-full" placeholder="Describe your parcel" />
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-2">
+                <input type="radio" value="document" {...register("type", { required: true })} className="radio" /> Document
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" value="non-document" {...register("type", { required: true })} className="radio" /> Non-Document
+              </label>
             </div>
             {parcelType === "non-document" && (
-              <div>
-                <label className="label">Weight (kg)</label>
-                <input type="number" step="0.1" {...register("weight", { required: true })} className="input input-bordered w-full" placeholder="Weight" />
-              </div>
+              <input type="number" step="0.1" {...register("weight", { required: true })} className="input input-bordered w-full" placeholder="Weight (kg)" />
             )}
           </div>
         </div>
 
+        {/* Sender & Receiver Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Sender */}
           <div className="p-4 border rounded-lg">
             <h2 className="text-lg font-semibold mb-4">Sender Info</h2>
             <div className="grid grid-cols-1 gap-4">
@@ -144,6 +163,7 @@ function SendParcel() {
             </div>
           </div>
 
+          {/* Receiver */}
           <div className="p-4 border rounded-lg">
             <h2 className="text-lg font-semibold mb-4">Receiver Info</h2>
             <div className="grid grid-cols-1 gap-4">
