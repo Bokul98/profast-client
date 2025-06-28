@@ -20,6 +20,7 @@ const MyParcels = () => {
     Swal.fire({
       title: `Tracking ID: ${parcel.tracking_id}`,
       html: `
+        <p><b>Title:</b> ${parcel.title}</p>
         <p><b>Type:</b> ${parcel.type}</p>
         <p><b>Status:</b> ${parcel.status}</p>
         <p><b>Total Cost:</b> ৳${parcel.total_cost}</p>
@@ -61,7 +62,9 @@ const MyParcels = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">My Parcels ({myParcels.length})</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        My Parcels ({myParcels.length})
+      </h2>
 
       {isLoading ? (
         <p>Loading...</p>
@@ -71,6 +74,7 @@ const MyParcels = () => {
             <thead>
               <tr>
                 <th>#</th>
+                <th>Title</th>
                 <th>Type</th>
                 <th>Created At</th>
                 <th>Total Cost (৳)</th>
@@ -81,11 +85,15 @@ const MyParcels = () => {
             <tbody>
               {myParcels.map((parcel, index) => (
                 <tr key={parcel._id}>
+                  {/* {JSON.stringify(parcel)} */}
                   <td>{index + 1}</td>
+                  <td>{parcel.title}</td>
                   <td>
                     <span
                       className={`badge ${
-                        parcel.type === "document" ? "badge-primary" : "badge-secondary"
+                        parcel.type === "document"
+                          ? "badge-primary"
+                          : "badge-secondary"
                       }`}
                     >
                       {parcel.type === "document" ? "Document" : "Non-document"}
@@ -96,7 +104,9 @@ const MyParcels = () => {
                   <td>
                     <span
                       className={`badge ${
-                        parcel.status === "Paid" ? "badge-success" : "badge-error"
+                        parcel.status === "Paid"
+                          ? "badge-success"
+                          : "badge-error"
                       }`}
                     >
                       {parcel.status === "Paid" ? "Paid" : "Unpaid"}

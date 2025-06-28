@@ -82,6 +82,7 @@ function SendParcel() {
       creation_time: new Date().toISOString(),
       tracking_id: "TRK-" + Math.random().toString(36).substr(2, 9).toUpperCase(),
       status: "Pending",
+      title: data.title
     };
 
     console.log("Saving to Database:", parcelData);
